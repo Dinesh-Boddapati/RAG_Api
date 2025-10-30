@@ -7,7 +7,7 @@ import google.generativeai as genai
 from pypdf import PdfReader
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
-import time # NEW: To time the process
+import time 
 
 # --- Gemini API Configuration ---
 try:
@@ -23,7 +23,7 @@ chunks = []
 index = None
 dimension = 0
 
-# --- Helper Functions (Unchanged) ---
+
 def read_pdf(pdf_path: str) -> str:
     """Reads a PDF and returns its text content."""
     reader = PdfReader(pdf_path)
@@ -47,9 +47,7 @@ def get_embedding(text: str) -> list[float]:
         print(f"Error getting embedding for text: {text[:20]}... Error: {e}")
         raise HTTPException(status_code=500, detail=f"Embedding API error: {e}")
 
-#
-# --- THIS IS THE MODIFIED FUNCTION ---
-#
+
 def embed_chunks_batch(chunks: list[str]) -> np.ndarray:
     """Generates embeddings for a list of text chunks in batches."""
     batch_size = 100  # Google's API limit can be up to 100 per request
@@ -60,7 +58,7 @@ def embed_chunks_batch(chunks: list[str]) -> np.ndarray:
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
         
-        # NEW: Call embed_content with the entire batch list
+        # Call embed_content with the entire batch list
         try:
             response = genai.embed_content(
                 model="models/embedding-001",
@@ -71,12 +69,8 @@ def embed_chunks_batch(chunks: list[str]) -> np.ndarray:
         
         except Exception as e:
             print(f"Error embedding batch {i//batch_size + 1}: {e}")
-            # Handle error (e.g., retry or skip)
-            # For simplicity, we'll just re-raise
+            # Handle error 
             raise HTTPException(status_code=500, detail=f"Embedding API error: {str(e)}")
-            
-        # Optional: Add a small delay to respect rate limits if needed
-        # time.sleep(1) 
 
     return np.array(all_embeddings).astype("float32")
 
@@ -93,15 +87,15 @@ class QueryRequest(BaseModel):
 # --- API Endpoints ---
 @app.post("/upload/")
 async def upload_document(file: UploadFile = File(...)):
-    """
-    Uploads a PDF, processes it, and creates a vector index.
-    """
+   
+   # we upload a PDF, processes it, and creates a vector index.
+   
     global chunks, index, dimension
     
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
     
-    start_time = time.time() # NEW: Start timer
+    start_time = time.time() 
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
@@ -123,9 +117,9 @@ async def upload_document(file: UploadFile = File(...)):
         if not chunks:
             raise HTTPException(status_code=400, detail="Failed to create text chunks.")
         
-        # 3. Embed chunks (MODIFIED)
+        # 3. Embed chunks 
         print("Embedding chunks in batches (this may still take a moment)...")
-        embeddings = embed_chunks_batch(chunks) # MODIFIED: Call new batch function
+        embeddings = embed_chunks_batch(chunks)
         dimension = embeddings.shape[1]
         
         # 4. Create and add to FAISS index
@@ -133,7 +127,7 @@ async def upload_document(file: UploadFile = File(...)):
         index = faiss.IndexFlatL2(dimension)
         index.add(embeddings)
 
-        end_time = time.time() # NEW: End timer
+        end_time = time.time()
         processing_time = end_time - start_time
 
         print(f"Upload and processing complete in {processing_time:.2f} seconds.")
@@ -156,7 +150,7 @@ async def upload_document(file: UploadFile = File(...)):
             print(f"Cleaned up temp file: {temp_file_path}")
 
 
-# --- (The rest of the file is unchanged) ---
+
 
 @app.post("/ask/")
 async def ask_question(request: QueryRequest):
